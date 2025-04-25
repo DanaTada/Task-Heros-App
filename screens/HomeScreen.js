@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, Button, FlatList, Alert,
-  TextInput, Modal, Image, SafeAreaView
+  TextInput, Modal, Image, SafeAreaView, StyleSheet
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { collection, onSnapshot, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { uzd_beigsana, jauns_uzd } from '../uzdFunkcijas';
 import { generateItemForLevel } from '../itemGenerator';
+import DateTimePickerModal from "react-native-modal-datetime-picker";  // Import the new date picker
+import moment from 'moment';  // For date formatting
+import { RadioButton } from 'react-native-paper';  // For urgency selection
 
 const levelImages = {
   1: require('../icons/1.png'),
@@ -36,6 +39,7 @@ export default function HomeScreen() {
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [urgency, setUrgency] = useState('low');
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);  // Date picker state
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -97,10 +101,7 @@ export default function HomeScreen() {
   const handleAddTask = async () => {
     if (title && description && deadline) {
       try {
-        const [year, month, day] = deadline.split('-');
-        const formattedDeadline = `${day}.${month}.${year.slice(-2)}`;
-
-        await jauns_uzd(title, description, formattedDeadline, urgency);
+        await jauns_uzd(title, description, deadline, urgency);
         Alert.alert('Task Added', 'Your task has been added successfully!');
         setTimeout(() => setShowModal(false), 500);
         setTitle('');
@@ -115,13 +116,23 @@ export default function HomeScreen() {
     }
   };
 
+  // Function to handle date selection from the picker
+  const handleConfirmDate = (date) => {
+    setDeadline(moment(date).format('DD.MM.YY'));  // Format date as dd.mm.yy
+    setDatePickerVisible(false);
+  };
+
+  const handleCancelDate = () => {
+    setDatePickerVisible(false);  // Close the picker without saving any date
+  };
+
   const renderTask = ({ item }) => (
-    <View>
-      <Text>{item.title}</Text>
+    <View style={styles.taskContainer}>
+      <Text style={styles.taskTitle}>{item.title}</Text>
       <Text>{item.description}</Text>
-      <Text>Urgency: {item.urgency}</Text>
+      <Text>Urgency: <Text style={styles[`${item.urgency}Urgency`]}>{item.urgency}</Text></Text>
       <Text>Deadline: {item.deadline}</Text>
-      {isPastDeadline(item.deadline) && <Text>Task Missed!</Text>}
+      {isPastDeadline(item.deadline) && <Text style={styles.missed}>Task Missed!</Text>}
       <Button title="✅ Complete" onPress={() => handleCompleteTask(item.id, item.urgency)} />
     </View>
   );
@@ -138,9 +149,9 @@ export default function HomeScreen() {
   if (loading) return <Text>Loading...</Text>;
 
   return (
-    <SafeAreaView>
-      <Text>Welcome, {userData.name || auth.currentUser?.email}</Text>
-      <Image source={levelImage} style={{ width: 100, height: 100 }} />
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Welcome, {userData.name || auth.currentUser?.email}</Text>
+      <Image source={levelImage} style={styles.levelImage} />
       <Text>Level: {userData.level} | XP: {userData.xp}</Text>
 
       <FlatList
@@ -151,6 +162,111 @@ export default function HomeScreen() {
 
       <Button title="Add Task" onPress={() => setShowModal(true)} />
       <Button title="Logout" onPress={handleLogout} />
+
+      {/* Modal for adding new task */}
+      <Modal visible={showModal} onRequestClose={() => setShowModal(false)}>
+        <View style={styles.modalContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Task Title"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Task Description"
+            value={description}
+            onChangeText={setDescription}
+          />
+          <Button title="Select Date" onPress={() => setDatePickerVisible(true)} />
+
+          <Text>Deadline: {deadline}</Text>
+          
+          {/* DateTimePickerModal for selecting date */}
+          <DateTimePickerModal
+            isVisible={isDatePickerVisible}
+            mode="date"
+            onConfirm={handleConfirmDate}
+            onCancel={handleCancelDate}
+            date={new Date()}
+            headerTextIOS="Select a Date"
+          />
+
+          <Text>Urgency:</Text>
+          <RadioButton.Group onValueChange={setUrgency} value={urgency}>
+            <View style={styles.radioButtonContainer}>
+              <RadioButton value="low" />
+              <Text>Low</Text>
+
+              <RadioButton value="medium" />
+              <Text>Medium</Text>
+
+              <RadioButton value="high" />
+              <Text>High</Text>
+            </View>
+          </RadioButton.Group>
+
+          <Button title="Add Task" onPress={handleAddTask} />
+          <Button title="Cancel" onPress={() => setShowModal(false)} />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 10,
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  levelImage: {
+    width: 100,
+    height: 100,
+    alignSelf: 'center',
+    marginVertical: 10,
+  },
+  taskContainer: {
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  taskTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  lowUrgency: {
+    color: 'green',
+  },
+  mediumUrgency: {
+    color: 'orange',
+  },
+  highUrgency: {
+    color: 'red',
+  },
+  missed: {
+    color: 'red',
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  input: {
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  radioButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
+
