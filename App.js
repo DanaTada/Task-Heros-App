@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StatusBar } from 'react-native';
-import { auth } from './firebase'; // Firebase authentication
+import { StatusBar, useColorScheme, Text, TextInput } from 'react-native';
+import * as Font from 'expo-font';
+import { auth } from './firebase';
 
-// Import screens
+
 import HomeScreen from './screens/HomeScreen';
 import LietasScreens from './screens/LietasScreens';
 import SpeleScreen from './screens/SpeleScreen';
@@ -13,29 +14,52 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import OpcijasScreen from './screens/OpcijasScreen';
 
+
+import { ThemeProvider } from './ThemeContext';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 const App = () => {
   const [user, setUser] = useState(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const scheme = useColorScheme();
 
-  // Handle user authentication state
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
   }, []);
 
-  // Authentication stack (Login and Register screens)
+  useEffect(() => {
+    const loadFonts = async () => {
+      await Font.loadAsync({
+        'ByteBounce': require('./assets/fonts/ByteBounce.ttf'),
+      });
+
+   
+      Text.defaultProps = Text.defaultProps || {};
+      Text.defaultProps.style = [Text.defaultProps.style, { fontFamily: 'ByteBounce' }];
+
+      TextInput.defaultProps = TextInput.defaultProps || {};
+      TextInput.defaultProps.style = [TextInput.defaultProps.style, { fontFamily: 'ByteBounce' }];
+
+      setFontsLoaded(true);
+    };
+
+    loadFonts();
+  }, []);
+
+  if (!fontsLoaded) return null; 
+
   const AuthStackScreen = () => (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 
-  // Main tabs for logged-in user
   const MainTabsScreen = () => (
-    <Tab.Navigator>
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Lietas" component={LietasScreens} />
       <Tab.Screen name="Spele" component={SpeleScreen} />
@@ -44,10 +68,12 @@ const App = () => {
   );
 
   return (
-    <NavigationContainer>
-      <StatusBar barStyle="dark-content" />
-      {user ? <MainTabsScreen /> : <AuthStackScreen />}
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} />
+        {user ? <MainTabsScreen /> : <AuthStackScreen />}
+      </NavigationContainer>
+    </ThemeProvider>
   );
 };
 

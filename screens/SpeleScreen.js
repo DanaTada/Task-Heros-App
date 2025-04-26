@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, Image, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Image, SafeAreaView, StyleSheet } from 'react-native';
+import { useAppTheme } from '../ThemeContext';
 
 const tapImage = require('../assets/game.png');
 
@@ -8,6 +9,7 @@ export default function MinigameScreen() {
   const [timeLeft, setTimeLeft] = useState(15);
   const [isPlaying, setIsPlaying] = useState(false);
   const intervalRef = useRef(null);
+  const theme = useAppTheme();
 
   const handleTap = () => {
     if (isPlaying) {
@@ -33,35 +35,77 @@ export default function MinigameScreen() {
 
   const endGame = () => {
     setIsPlaying(false);
-    Alert.alert('⏱ Time’s Up!', `You tapped ${score} times!`);
+    Alert.alert('⏱ Time’s Up!', 'Your time is up!');
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>🎮 Tap Challenge</Text>
-      <Text>{timeLeft}s</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
+      <Text style={styles.title}>Tap Challenge</Text>
+      <Text style={styles.timer}>{timeLeft}s</Text>
 
       <TouchableOpacity onPress={handleTap} disabled={!isPlaying}>
         <Image
           source={tapImage}
-          style={{ width: 300, height: 300, marginTop: -50, opacity: isPlaying ? 1 : 0.5 }}
+          style={[styles.image, { opacity: isPlaying ? 1 : 0.5 }]}
         />
       </TouchableOpacity>
 
-      <Text>Score: {score}</Text>
+      <Text style={styles.score}>Score: {score}</Text>
 
       <TouchableOpacity
         onPress={startGame}
         disabled={isPlaying}
-        style={{
-          paddingVertical: 10,
-          paddingHorizontal: 30,
-          backgroundColor: isPlaying ? '#ccc' : '#34C759',
-          borderRadius: 10,
-        }}
+        style={[
+          styles.button,
+          { backgroundColor: isPlaying ? '#555' : '#34C759' }
+        ]}
       >
-        <Text style={{ color: 'white' }}>Start</Text>
+        <Text style={styles.buttonText}>Start</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 50,
+    color: 'orange',
+    fontFamily: 'ByteBounce',
+    marginBottom: 20,
+    marginTop:20,
+  },
+  timer: {
+    fontSize: 40,
+    color: 'orange',
+    fontFamily: 'ByteBounce',
+    marginBottom: 20,
+  },
+  image: {
+    width: 330,
+    height: 350,
+    marginBottom: 20,
+    marginTop:- 90,
+  },
+  score: {
+    fontSize: 35,
+    color: 'orange',
+    fontFamily: 'ByteBounce',
+    marginVertical: 20,
+  },
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 10,
+  },
+  buttonText: {
+    fontSize: 32,
+    color: 'white',
+    fontFamily: 'ByteBounce',
+    textAlign: 'center',
+  },
+});

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, Button, FlatList, Alert,
-  TextInput, Modal, Image, SafeAreaView, StyleSheet
+  View, Text, FlatList, Alert,
+  TextInput, Modal, Image, SafeAreaView,
+  StyleSheet, ImageBackground, TouchableOpacity, ScrollView
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { collection, onSnapshot, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { uzd_beigsana, jauns_uzd } from '../uzdFunkcijas';
 import { generateItemForLevel } from '../itemGenerator';
-import DateTimePickerModal from "react-native-modal-datetime-picker";  // Import the new date picker
-import moment from 'moment';  // For date formatting
-import { RadioButton } from 'react-native-paper';  // For urgency selection
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import moment from 'moment';
+import { RadioButton } from 'react-native-paper';
+import { useAppTheme } from '../ThemeContext';
 
 const levelImages = {
   1: require('../icons/1.png'),
@@ -31,6 +33,7 @@ const levelImages = {
 };
 
 export default function HomeScreen() {
+  const theme = useAppTheme();
   const [tasks, setTasks] = useState([]);
   const [userData, setUserData] = useState({ name: '', level: 1, xp: 0 });
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,7 @@ export default function HomeScreen() {
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [urgency, setUrgency] = useState('low');
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);  // Date picker state
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -72,10 +75,8 @@ export default function HomeScreen() {
   const handleCompleteTask = async (taskId, urgency) => {
     try {
       const result = await uzd_beigsana(taskId, urgency);
-
       if (result.levelUp) {
         Alert.alert('🎉 Level Up!', `You've reached level ${result.newLevel}!`);
-
         const user = auth.currentUser;
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
@@ -87,7 +88,6 @@ export default function HomeScreen() {
         const itemRef = collection(db, 'users', user.uid, 'items');
         await addDoc(itemRef, item);
       }
-
       setUserData({ ...userData, level: result.newLevel, xp: result.newXP });
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -116,26 +116,14 @@ export default function HomeScreen() {
     }
   };
 
-  // Function to handle date selection from the picker
   const handleConfirmDate = (date) => {
-    setDeadline(moment(date).format('DD.MM.YY'));  // Format date as dd.mm.yy
+    setDeadline(moment(date).format('DD.MM.YY'));
     setDatePickerVisible(false);
   };
 
   const handleCancelDate = () => {
-    setDatePickerVisible(false);  // Close the picker without saving any date
+    setDatePickerVisible(false);
   };
-
-  const renderTask = ({ item }) => (
-    <View style={styles.taskContainer}>
-      <Text style={styles.taskTitle}>{item.title}</Text>
-      <Text>{item.description}</Text>
-      <Text>Urgency: <Text style={styles[`${item.urgency}Urgency`]}>{item.urgency}</Text></Text>
-      <Text>Deadline: {item.deadline}</Text>
-      {isPastDeadline(item.deadline) && <Text style={styles.missed}>Task Missed!</Text>}
-      <Button title="✅ Complete" onPress={() => handleCompleteTask(item.id, item.urgency)} />
-    </View>
-  );
 
   const isPastDeadline = (deadlineStr) => {
     const [day, month, year] = deadlineStr.split('.');
@@ -143,102 +131,158 @@ export default function HomeScreen() {
     return deadlineDate < new Date();
   };
 
-  const levelImage =
-    userData.level > 15 ? levelImages[15] : levelImages[userData.level] || levelImages[1];
+  const renderTask = ({ item }) => {
+    const containerStyle = [
+      styles.taskContainer,
+      { backgroundColor: theme.mode === 'dark' ? '#333' : '#f0f0f0' },
+    ];
 
-  if (loading) return <Text>Loading...</Text>;
+    return (
+      <View style={containerStyle}>
+        <Text style={styles.taskTitle}>{item.title}</Text>
+        <Text style={styles.taskText}>{item.description}</Text>
+        <Text style={styles.taskText}>
+          Urgency: <Text style={styles[`${item.urgency}Urgency`]}>{item.urgency}</Text>
+        </Text>
+        <Text style={styles.taskText}>Deadline: {item.deadline}</Text>
+        {isPastDeadline(item.deadline) && <Text style={styles.missed}>Task Missed!</Text>}
+        <TouchableOpacity style={styles.button} onPress={() => handleCompleteTask(item.id, item.urgency)}>
+          <Text style={styles.buttonText}>✅ Complete</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const levelImage = userData.level > 15 ? levelImages[15] : levelImages[userData.level] || levelImages[1];
+
+  if (loading) return <Text style={styles.text}>Loading...</Text>;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Welcome, {userData.name || auth.currentUser?.email}</Text>
-      <Image source={levelImage} style={styles.levelImage} />
-      <Text>Level: {userData.level} | XP: {userData.xp}</Text>
+    <ImageBackground source={theme.image} style={styles.container} resizeMode="cover">
+      <SafeAreaView style={styles.inner}>
+        <Text style={styles.header}>Welcome, {userData.name || auth.currentUser?.email}</Text>
+        <Image source={levelImage} style={styles.levelImage} />
+        <Text style={styles.levelText}>Level: {userData.level} | XP: {userData.xp}</Text>
 
-      <FlatList
-        data={tasks}
-        renderItem={renderTask}
-        keyExtractor={(item) => item.id}
-      />
+        <FlatList
+          data={tasks}
+          renderItem={renderTask}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ flexGrow: 1 }}
+        />
 
-      <Button title="Add Task" onPress={() => setShowModal(true)} />
-      <Button title="Logout" onPress={handleLogout} />
+        <TouchableOpacity style={styles.button} onPress={() => setShowModal(true)}>
+          <Text style={styles.buttonText}>➕ Add Task</Text>
+        </TouchableOpacity>
 
-      {/* Modal for adding new task */}
-      <Modal visible={showModal} onRequestClose={() => setShowModal(false)}>
-        <View style={styles.modalContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Task Title"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Task Description"
-            value={description}
-            onChangeText={setDescription}
-          />
-          <Button title="Select Date" onPress={() => setDatePickerVisible(true)} />
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
+          <Text style={styles.buttonText}>🚪 Logout</Text>
+        </TouchableOpacity>
 
-          <Text>Deadline: {deadline}</Text>
-          
-          {/* DateTimePickerModal for selecting date */}
-          <DateTimePickerModal
-            isVisible={isDatePickerVisible}
-            mode="date"
-            onConfirm={handleConfirmDate}
-            onCancel={handleCancelDate}
-            date={new Date()}
-            headerTextIOS="Select a Date"
-          />
+        <Modal visible={showModal} onRequestClose={() => setShowModal(false)}>
+          <ScrollView style={[styles.modalContainer, { backgroundColor: theme.backgroundColor }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Task Title"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Task Description"
+              placeholderTextColor="#999"
+              value={description}
+              onChangeText={setDescription}
+            />
+            <TouchableOpacity style={styles.button} onPress={() => setDatePickerVisible(true)}>
+              <Text style={styles.buttonText}>📅 Select Date</Text>
+            </TouchableOpacity>
+            <Text style={styles.taskText}>Deadline: {deadline}</Text>
 
-          <Text>Urgency:</Text>
-          <RadioButton.Group onValueChange={setUrgency} value={urgency}>
-            <View style={styles.radioButtonContainer}>
-              <RadioButton value="low" />
-              <Text>Low</Text>
+            <DateTimePickerModal
+              isVisible={isDatePickerVisible}
+              mode="date"
+              onConfirm={handleConfirmDate}
+              onCancel={handleCancelDate}
+              date={new Date()}
+            />
 
-              <RadioButton value="medium" />
-              <Text>Medium</Text>
+            <Text style={styles.taskText}>Urgency:</Text>
+            <RadioButton.Group onValueChange={setUrgency} value={urgency}>
+              <View style={styles.radioButtonContainer}>
+                <RadioButton value="low" />
+                <Text style={styles.taskText}>Low</Text>
+                <RadioButton value="medium" />
+                <Text style={styles.taskText}>Medium</Text>
+                <RadioButton value="high" />
+                <Text style={styles.taskText}>High</Text>
+              </View>
+            </RadioButton.Group>
 
-              <RadioButton value="high" />
-              <Text>High</Text>
-            </View>
-          </RadioButton.Group>
-
-          <Button title="Add Task" onPress={handleAddTask} />
-          <Button title="Cancel" onPress={() => setShowModal(false)} />
-        </View>
-      </Modal>
-    </SafeAreaView>
+            <TouchableOpacity style={styles.button} onPress={handleAddTask}>
+              <Text style={styles.buttonText}>✅ Add Task</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={() => setShowModal(false)}>
+              <Text style={styles.buttonText}>❌ Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </Modal>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+  },
+  inner: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'flex-start',
   },
   header: {
-    fontSize: 20,
+    fontSize: 40,
+    fontFamily: 'ByteBounce',
+    color: 'yellow',
     fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom: 10,
   },
   levelImage: {
-    width: 100,
-    height: 100,
+    width: 190,
+    height: 190,
     alignSelf: 'center',
     marginVertical: 10,
   },
+  levelText: {
+    fontSize: 35,
+    fontFamily: 'ByteBounce',
+    color: 'yellow',
+    textAlign: 'center',
+    margin: 20,
+    
+  },
   taskContainer: {
-    marginBottom: 10,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 20,
+    borderColor: 'orange',
+    alignItems: 'center',
   },
   taskTitle: {
-    fontSize: 18,
+    fontSize: 33,
     fontWeight: 'bold',
+    color: 'darkorange',
+    fontFamily: 'ByteBounce',
+    textAlign: 'center',
+  },
+  taskText: {
+    fontSize: 31,
+    color: 'darkorange',
+    fontFamily: 'ByteBounce',
+    textAlign: 'center',
   },
   lowUrgency: {
     color: 'green',
@@ -252,21 +296,44 @@ const styles = StyleSheet.create({
   missed: {
     color: 'red',
     fontWeight: 'bold',
+    fontSize: 20,
   },
   modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
     padding: 20,
   },
   input: {
-    borderWidth: 1,
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
+    borderWidth: 5,
+    padding: 12,
+    marginBottom: 15,
+    marginTop:30,
+    borderRadius: 8,
+    borderColor: 'orange',
+    color: 'grey',
+    fontSize: 32,
+    fontFamily: 'ByteBounce',
+    
+  },
+  button: {
+    backgroundColor: 'white',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: 'dark brown',
+    marginVertical: 8,
+    alignSelf: 'center',
+    minWidth: 140,
+  },
+  buttonText: {
+    color: 'grey',
+    fontFamily: 'ByteBounce',
+    fontSize: 24,
+    textAlign: 'center',
+    backgroundColor: 'white',
   },
   radioButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
 });
-

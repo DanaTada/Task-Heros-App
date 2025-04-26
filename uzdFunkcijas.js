@@ -19,7 +19,7 @@ const getUserData = async (userId) => {
   if (userSnap.exists()) {
     return userSnap.data();
   }
-  return { xp: 0, level: 1 }; // Default values
+  return { xp: 0, level: 1 }; // Default values if user data not found
 };
 
 // Validate deadline format: dd.mm.yy
@@ -73,11 +73,15 @@ const getLevelThreshold = (level) => level * 10;
 // Check if deadline is missed
 const isDeadlineMissed = (deadline) => {
   const [day, month, year] = deadline.split('.').map(Number);
-  const deadlineDate = new Date(2000 + year, month - 1, day);
   
-  const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
+  // Create a new Date object with the parsed values
+  const deadlineDate = new Date(2000 + year, month - 1, day); // Note: month is zero-indexed in JavaScript Date
 
+  // Get the current date
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0); // Normalize current date to midnight
+
+  // Compare the dates
   return deadlineDate < currentDate;
 };
 
