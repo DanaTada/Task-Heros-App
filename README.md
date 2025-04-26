@@ -43,4 +43,4 @@ Lietotnē ir arī klikšķināšanas mini spēle ar pretinieka spraita attēlu u
 kurus iegūst, sasniedzot jaunu līmeni. Bija plānots pilnībā iztulkot lietotni angļu valodā,
 bet laika ierobežojumu dēļ tas netika paveikts, tāpat arī vizuālais noformējums nav līdz galam pabeigts, taču lietotnei ir gaišais un tumšais režīms.
 
-Es izveidoju uz fantāzijas tēmu balstītu uzdevumu izsekošanas lietotni – kad lietotājs pabeidz uzdevumus pirms termiņa, viņš līmeņojas augšup līdz 15. līmenim un mainās viņa profila attēls. Lietotnē ir arī klikšķināšanas mini spēle ar pretinieka spraita attēlu un saraksts ar API ģenerētiem priekšmetiem, kurus iegūst, sasniedzot jaunu līmeni. Bija plānots pilnībā iztulkot lietotni angļu valodā, bet laika ierobežojumu dēļ tas netika paveikts, tāpat arī vizuālais noformējums nav līdz galam pabeigts, taču lietotnei ir gaišais un tumšais režīms.
+
